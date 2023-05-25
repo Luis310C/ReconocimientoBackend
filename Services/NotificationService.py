@@ -53,9 +53,9 @@ class NotificationService:
             "to": f"+502{message_content.number_phone}",
             "type": "template",
             "template": {
-                "name": message_content.body,
+                "name": "whatsapp:hsm:notification",
                 "language": {
-                    "code": "en_US"
+                    "code": "es"
                 }
             }
         }
