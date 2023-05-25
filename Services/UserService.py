@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from models import UserModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from Services.CyptographyService import CryptographyService
@@ -23,6 +25,8 @@ class UserService:
         self.__recognize_service = ServiceRecognize()
         config_email["smtp_password"] = self.__cryptography_context. \
             symmetric_decrypt(config_email["smtp_password"])
+        config_whatsapp["auth_token"] = self.__cryptography_context.symmetric_decrypt(config_whatsapp["auth_token"])
+        config_whatsapp["account_sid"] = self.__cryptography_context.symmetric_decrypt(config_whatsapp["account_sid"])
         self.__notification_service = NotificationService(config_email=config_email,
                                                           config_whatsapp=config_whatsapp)
 
@@ -45,6 +49,7 @@ class UserService:
 
     async def authenticate_base64(self, username, image_base64):
         bytes_image = base64.b64decode(image_base64)
+        content_bytes = BytesIO(bytes_image)
         return await self.authenticate_face(username, bytes_image)
 
     async def authenticate_face(self, username, face_bytes: bytes):
@@ -69,7 +74,7 @@ class UserService:
             message.email_address = user.email
             message.subject = "Registro exitoso"
             message.body = f"Estimado {user.name} {user.last_name}, su registro ha sido exitoso"
-            await self.__notification_service.send_mail(message)
+            await self.__notification_service.notify(message)
         except Exception as e:
             print(e)
             creation = None

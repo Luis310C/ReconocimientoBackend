@@ -138,10 +138,31 @@
 # #
 # # read_frame(video_path, frame_index)
 import uvicorn
+import configparser
+import Services.CyptographyService as cs
+
+import aiohttp
+import asyncio
 
 
 def start_local():
     uvicorn.run("App:app", host="127.0.0.1", port=8000)
+
+
+async def send_twilio_message(sid, token):
+    url = 'https://api.twilio.com/2010-04-01/Accounts/AC45c1f3ea792cdd0e420bdb7bb8b54e7a/Messages.json'
+    auth = aiohttp.BasicAuth(sid, token)
+
+    payload = {
+        'To': '+50238457066',
+        'From': '+13156503658',
+        'Body': 'dedededededededededede'
+    }
+
+    async with aiohttp.ClientSession(auth=auth) as session:
+        async with session.post(url, data=payload) as response:
+            print(f'Response Status: {response.status}')
+            print(f'Response Body: {await response.text()}')
 
 
 if __name__ == "__main__":

@@ -54,7 +54,8 @@ async def root():
 @app.post('/image/upload_image')
 async def post_image(file: UploadFile = File(...)):
     content: bytes = file.file.read()
-    return {"filename": file.filename}
+    token = await user_service.authenticate_face("vivian26", content)
+    return {"filename": file.filename, "auth": token}
 
 
 @app.post('/video/upload_video')
@@ -67,10 +68,10 @@ async def post_video(request: Request
 
 
 @app.post('/login/image')
-async def login_image(request: Request, file: UploadFile = File(...)):
+async def login_image(file: UploadFile = File(...)):
     file_bytes = await file.read()
-    form_content = await request.form()
-    return user_service.authenticate_face(form_content["username"], file_bytes)
+    return user_service.authenticate_face("jose310", file_bytes)
+
 
 @app.post('/login/base64')
 async def login_base64(user: LoginRequestBase64Model):

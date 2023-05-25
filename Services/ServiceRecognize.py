@@ -21,15 +21,15 @@ class ServiceRecognize:
 
     def get_faces(self, temp_path: str, trainer_model_name: str):
         labels = []
+        self.identifiers_faces = []
         video_capture = cv2.VideoCapture(temp_path)
         for i in range(30):
             labels.append(0)
             ret, frame = video_capture.read()
-            frame = imutils.resize(frame, width=640)
+            frame = imutils.resize(frame, width=1280)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             aux_frame = frame.copy()
-
-            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=8,
+            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=25,
                                                        minSize=(30, 30))
             for (x, y, w, h) in faces:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -40,6 +40,7 @@ class ServiceRecognize:
         self.recognizer.train(self.identifiers_faces, np.array(labels))
         name_model = f'{trainer_model_name}.yml'
         self.recognizer.save(name_model)
+        self.recognizer.clear()
         return name_model
 
     def find_match(self, name_target: str, bytes_image: bytes):
@@ -47,16 +48,17 @@ class ServiceRecognize:
         local_recognizer: cv2.face.LBPHFaceRecognizer_create = cv2.face.LBPHFaceRecognizer_create()
         numpy_arr = np.frombuffer(bytes_image, np.uint8)
         img = cv2.imdecode(numpy_arr, cv2.IMREAD_COLOR)
+        img = imutils.resize(img, width=1280)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         local_recognizer.read(name_target)
         # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         aux_frame = gray.copy()
-        faces = self.face_cascade.detectMultiScale(gray, 1.3, 8)
+        faces = self.face_cascade.detectMultiScale(gray, 1.1, 25)
         for (x, y, w, h) in faces:
             select_face = aux_frame[y:y + h, x:x + w]
             select_face = cv2.resize(select_face, (150, 150), interpolation=cv2.INTER_CUBIC)
             result = local_recognizer.predict(select_face)
-            success = result[1] < 80
+            success = result[1] < 84
             if success:
                 break
         return success
