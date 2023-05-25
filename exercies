@@ -1,0 +1,5 @@
+
+docker run -d -p 27017:27017 --name proyecto-mongo -e MONGO_INITDB_ROOT_USERNAME=mongoadmin -e MONGO_INITDB_ROOT_PASSWORD=arr458ws213sasd  mongo:latest
+db.users.createIndex({ email: 1 }, { unique: true })
+db.users.createIndex({ username: 1 }, { unique: true })
+db.users.createIndex({ phone: 1 }, { unique: true })

@@ -8,5 +8,4 @@ class UserModel(BaseModel):
     phone: str = None
     name: str = None
     last_name: str = None
-    binary_image: bytes = None
-    image_model: str = None
+    model_name: str = None
