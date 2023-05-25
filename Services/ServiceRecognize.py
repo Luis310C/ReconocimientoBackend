@@ -43,6 +43,7 @@ class ServiceRecognize:
         return name_model
 
     def find_match(self, name_target: str, bytes_image: bytes):
+        success = False
         local_recognizer: cv2.face.LBPHFaceRecognizer_create = cv2.face.LBPHFaceRecognizer_create()
         numpy_arr = np.frombuffer(bytes_image, np.uint8)
         img = cv2.imdecode(numpy_arr, cv2.IMREAD_COLOR)
@@ -55,11 +56,10 @@ class ServiceRecognize:
             select_face = aux_frame[y:y + h, x:x + w]
             select_face = cv2.resize(select_face, (150, 150), interpolation=cv2.INTER_CUBIC)
             result = local_recognizer.predict(select_face)
-            if result[1] < 80:
-                print(" {} is: {}".format(name_target, result))
-            else:
-                print(" {} is not recognized".format(name_target))
-
+            success = result[1] < 80
+            if success:
+                break
+        return success
 
     def record_video(self, duration: int):
         images_bytes: List[bytes] = []

@@ -7,7 +7,7 @@ import configparser
 
 from Services.UserService import UserService
 
-from models import UserModel
+from models import UserModel, LoginRequestModel
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=100)
@@ -23,8 +23,8 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 connection = config["CONNECTIONS"]["mongo_connection_string"]
 public_key = config["CONNECTIONS"]["public_key"]
-user_service = UserService(connection, public_key)
-
+user_service = UserService(connection, public_key,
+                           config_whatsapp=config["WHATSAPP"], config_email=config["EMAIL"])
 
 
 def set_values(form_content):
@@ -43,9 +43,9 @@ async def root():
     return {'status': 200}
 
 
-@app.post('/user/create')
-async def create_user(user: UserModel):
-    return await user_service.create_user(user)
+# @app.post('/user/create')
+# async def create_user(user: UserModel):
+#     return await user_service.create_user(user)
 
 
 @app.post('/image/upload_image')
@@ -60,15 +60,16 @@ async def post_video(request: Request
     file_bytes = await file.read()
     form_content = await request.form()
     model = set_values(form_content)
-    model.model_name = recognize_service.get_faces(file.file.name, model.username)
-    return await user_service.create_user(model)
+    return await user_service.create_user(model, file)
 
 
 @app.post('/login/image')
 async def login_image(request: Request, file: UploadFile = File(...)):
     file_bytes = await file.read()
-
     form_content = await request.form()
-    # model = set_values(form_content)
-    recognize = recognize_service.find_match("jose310.yml", file_bytes)
-    return {"status": "ok"}
+    return user_service.authenticate_face(form_content["username"], file_bytes)
+
+
+@app.post('/login')
+async def login(user: LoginRequestModel):
+    return await user_service.authenticate(user.username, user.password)
