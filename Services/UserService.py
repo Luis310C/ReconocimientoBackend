@@ -20,10 +20,17 @@ class UserService:
                                                     symmetric_decrypt(connection_string))
         self.__database = self.__database_client.web_app
         self.__recognize_service = ServiceRecognize()
-        config_email["smtp_password"] = self.__cryptography_context.\
+        config_email["smtp_password"] = self.__cryptography_context. \
             symmetric_decrypt(config_email["smtp_password"])
         self.__notification_service = NotificationService(config_email=config_email,
                                                           config_whatsapp=config_whatsapp)
+
+    async def start(self):
+        await self.__notification_service.start()
+
+    async def close(self):
+        await self.__notification_service.stop()
+        self.__database_client.close()
 
     async def authenticate(self, username, password):
         response = None
@@ -35,7 +42,7 @@ class UserService:
                 response = self.__cryptography_context.create_access_token({"sub": username})
         return response
 
-    async def authenticate_face(self,username, face_bytes:bytes):
+    async def authenticate_face(self, username, face_bytes: bytes):
         response = None
         cursor = await self.__database.users. \
             find_one({"_id": username})
@@ -44,7 +51,6 @@ class UserService:
             if is_valid:
                 response = self.__cryptography_context.create_access_token({"sub": username})
         return response
-
 
     async def create_user(self, user: UserModel, file):
         user.model_name = self.__recognize_service.get_faces(file.file.name, user.username)
@@ -59,6 +65,7 @@ class UserService:
             message.subject = "Registro exitoso"
             message.body = f"Estimado {user.name} {user.last_name}, su registro ha sido exitoso"
             await self.__notification_service.send_mail(message)
-        except:
+        except Exception as e:
+            print(e)
             creation = None
         return {"success": "creation"}

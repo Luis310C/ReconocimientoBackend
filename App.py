@@ -26,6 +26,9 @@ public_key = config["CONNECTIONS"]["public_key"]
 user_service = UserService(connection, public_key,
                            config_whatsapp=config["WHATSAPP"], config_email=config["EMAIL"])
 
+app.add_event_handler('startup', user_service.start)
+app.add_event_handler('shutdown', user_service.close)
+
 
 def set_values(form_content):
     user_model: UserModel = UserModel()
@@ -68,6 +71,8 @@ async def login_image(request: Request, file: UploadFile = File(...)):
     file_bytes = await file.read()
     form_content = await request.form()
     return user_service.authenticate_face(form_content["username"], file_bytes)
+
+
 
 
 @app.post('/login')
