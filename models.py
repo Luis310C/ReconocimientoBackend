@@ -6,6 +6,11 @@ class LoginRequestModel(BaseModel):
     password: str = None
 
 
+class LoginRequestBase64Model(BaseModel):
+    username: str = None
+    image_base64: str = None
+
+
 class UserModel(BaseModel):
     username: str = None
     password: str = None

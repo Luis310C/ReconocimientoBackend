@@ -7,7 +7,7 @@ import configparser
 
 from Services.UserService import UserService
 
-from models import UserModel, LoginRequestModel
+from models import UserModel, LoginRequestModel, LoginRequestBase64Model
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=100)
@@ -72,7 +72,9 @@ async def login_image(request: Request, file: UploadFile = File(...)):
     form_content = await request.form()
     return user_service.authenticate_face(form_content["username"], file_bytes)
 
-
+@app.post('/login/base64')
+async def login_base64(user: LoginRequestBase64Model):
+    return await user_service.authenticate_base64(user.username, user.image_base64)
 
 
 @app.post('/login')

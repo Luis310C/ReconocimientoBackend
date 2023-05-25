@@ -4,6 +4,7 @@ from Services.CyptographyService import CryptographyService
 from Services.ServiceRecognize import ServiceRecognize
 from Services.NotificationService import NotificationService, StandardMessage
 import configparser
+import base64
 
 
 class UserService:
@@ -41,6 +42,10 @@ class UserService:
             if is_valid:
                 response = self.__cryptography_context.create_access_token({"sub": username})
         return response
+
+    async def authenticate_base64(self, username, image_base64):
+        bytes_image = base64.b64decode(image_base64)
+        return await self.authenticate_face(username, bytes_image)
 
     async def authenticate_face(self, username, face_bytes: bytes):
         response = None
