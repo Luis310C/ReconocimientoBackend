@@ -45,7 +45,10 @@ class NotificationService:
         message["To"] = message_content.email_address
         message["Subject"] = message_content.subject
         message.set_content(message_content.body)
-        await self.__smtp_client.send_message(message)
+        try:
+            await self.__smtp_client.send_message(message)
+        except Exception as e:
+            await self.start()
 
     async def send_message(self, message_content: StandardMessage):
         data = {

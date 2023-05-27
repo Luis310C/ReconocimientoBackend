@@ -1,52 +1,62 @@
-# import uvicorn
+#
+# import numpy as np
+# import argparse
+# import time
+# import math
+# import imutils
 # import cv2
-# from matplotlib import pyplot as plt
+# import matplotlib.pyplot as plt
 #
-# # Cargamos los clasificadores requeridos
-# face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+# rectKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
+# sqKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
+# image = cv2.imread("4.jpg")
+# image = imutils.resize(image, height=600)
+# gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# gray = cv2.GaussianBlur(gray, (3, 3), 0)
+# blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, rectKernel)
+# gradX = cv2.Sobel(blackhat, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
+# gradX = np.absolute(gradX)
+# (minVal, maxVal) = (np.min(gradX), np.max(gradX))
+# gradX = (255 * ((gradX - minVal) / (maxVal - minVal))).astype("uint8")
+# gradX = cv2.morphologyEx(gradX, cv2.MORPH_CLOSE, rectKernel)
+# thresh = cv2.threshold(gradX, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+# thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, sqKernel)
+# thresh = cv2.erode(thresh, None, iterations=4)
 #
-# img = cv2.imread('3.jpg')
-# gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-# aux = gray.copy()
-#
-# faces = face_cascade.detectMultiScale(gray, 1.1, 12)
-# numCaras = 0
-# for (x, y, w, h) in faces:
-#     select_face = aux[y:y + h, x:x + w]
-#     plt.imshow(select_face)
+# p = int(image.shape[1] * 0.05)
+# thresh[:, 0:p] = 0
+# thresh[:, image.shape[1] - p:] = 0
+# cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+#                         cv2.CHAIN_APPROX_SIMPLE)
+# cnts = imutils.grab_contours(cnts)
+# # plt.imshow(thresh)
+# # plt.show()
+# cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+# print(len(cnts))
+# for c in cnts:
+#     (x, y, w, h) = cv2.boundingRect(c)
+#     ar = w / float(h)
+#     crWidth = w / float(gray.shape[1])
+#     pX = int((x + w) * 0.03)
+#     pY = int((y + h) * 0.03)
+#     (x, y) = (x - pX, y - pY)
+#     (w, h) = (w + (pX * 2), h + (pY * 2))
+#     roi = image[y:y + h, x:x + w].copy()
+#     cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+#     plt.imshow(image)
 #     plt.show()
-#     numCaras += 1
-#
-#     # cv2.rectangle(img, (x, y), (x + w, y + h), (125, 255, 0), 2)
-#     # numCaras = numCaras + 1
-#     # Mostramos la imagen
-#
-# print("Número de caras detectadas: {}".format(numCaras))
-from datetime import time, datetime
+#     # plt.imshow(image)
+#     # plt.show()
+#     # check to see if the aspect ratio and coverage width are within<font></font>
 import uvicorn
-def start_local():
-    uvicorn.run("App:app", host="127.0.0.1", port=8000)
 
+
+def start_local():
+    uvicorn.run("App:app", host="127.0.0.1", port=8000, reload=True)
 
 
 if __name__ == "__main__":
     start_local()
-from imutils import paths
-import numpy as np
-import argparse
-import time
-import math
-import imutils
-import cv2
-import matplotlib.pyplot as plt
-
-
-    # plt.imshow(image)
-    # plt.show()
-    # check to see if the aspect ratio and coverage width are within<font></font>
-
-# if __name__ == "__main__":
-#     start_local()
 
 # for c in cnts:
 #     (x, y, w, h) = cv2.boundingRect(c)
