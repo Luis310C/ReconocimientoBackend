@@ -43,6 +43,8 @@ class ServiceRecognize:
         video_capture = cv2.VideoCapture(temp_path)
         for i in range(40):
             _, frame = video_capture.read()
+            if frame is None:
+                break
             gray = self.preprocess_image(frame)
             self.__get_faces(gray, lambda face, array_images: self.__identify_all_faces(face, array_images),
                              self.identifiers_faces)
