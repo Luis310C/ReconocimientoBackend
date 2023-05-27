@@ -1,3 +1,5 @@
+import tempfile
+
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Tuple
@@ -62,9 +64,14 @@ async def post_image(file: UploadFile = File(...)):
 async def post_video(request: Request
                      , file: UploadFile = File(...)):
     file_bytes = await file.read()
-    form_content = await request.form()
-    model = set_values(form_content)
-    return await user_service.create_user(model, file)
+    response =""
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(file_bytes)
+        temp_file_path = temp_file.name
+        form_content = await request.form()
+        model = set_values(form_content)
+        response = await user_service.create_user(model, temp_file_path)
+    return response
 
 
 @app.post('/login/image')

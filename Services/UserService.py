@@ -87,9 +87,9 @@ class UserService:
                 response = self.__cryptography_context.create_access_token({"sub": username})
         return response
 
-    async def create_user(self, user: UserModel, file):
-        print(file.file.name)
-        user.model_name = self.__recognize_service.train_faces(file.file.name, f"{user.username}.yml")
+    async def create_user(self, user: UserModel, file_name):
+        print(file_name)
+        user.model_name = self.__recognize_service.train_faces(file_name, f"{user.username}.yml")
         user_dict = user.dict()
         user_dict["_id"] = user_dict["username"]
         user_dict["password"] = self.__cryptography_context.get_password_hash(user_dict["password"])
