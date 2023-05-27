@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from models import UserModel
+from models import UserModel, DpiModel
 from motor.motor_asyncio import AsyncIOMotorClient
 from Services.CyptographyService import CryptographyService
 from Services.ServiceRecognize import ServiceRecognize
@@ -49,8 +49,33 @@ class UserService:
 
     async def authenticate_base64(self, username, image_base64):
         bytes_image = base64.b64decode(image_base64)
-        content_bytes = BytesIO(bytes_image)
-        return await self.authenticate_face(username, bytes_image)
+        return {"auth": await self.authenticate_face(username, bytes_image)}
+
+    async def validate_dpi(self, dpi: DpiModel):
+        response = {}
+        message: StandardMessage = StandardMessage()
+        bytes_front = base64.b64decode(dpi.front_dpi)
+        bytes_back = base64.b64decode(dpi.back_dpi)
+        username = dpi.username
+        cursor = await self.__database.users.find_one({"_id": username})
+        if cursor:
+            message.number_phone = cursor["phone"]
+            message.email_address = cursor["email"]
+            message.subject = "DPI"
+            is_valid = self.__recognize_service.validate_dpi(bytes_front, bytes_back)
+            if is_valid:
+                cursor["dpi_validated"] = True
+                await self.__database.users.update_one({"_id": username}, {"$set": cursor})
+
+                message.body = "DPI validado"
+                response = {"message": " success dpi validation"}
+            else:
+                message.body = "DPI invalido"
+                response = {"message": " invalid dpi"}
+            await self.__notification_service.notify(message)
+        else:
+            response = {"message": " user not found"}
+        return response
 
     async def authenticate_face(self, username, face_bytes: bytes):
         response = None
@@ -63,7 +88,7 @@ class UserService:
         return response
 
     async def create_user(self, user: UserModel, file):
-        user.model_name = self.__recognize_service.get_faces(file.file.name, user.username)
+        user.model_name = self.__recognize_service.train_faces(file.file.name, f"{user.username}.yml")
         user_dict = user.dict()
         user_dict["_id"] = user_dict["username"]
         user_dict["password"] = self.__cryptography_context.get_password_hash(user_dict["password"])

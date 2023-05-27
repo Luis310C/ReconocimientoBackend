@@ -19,3 +19,9 @@ class UserModel(BaseModel):
     name: str = None
     last_name: str = None
     model_name: str = None
+
+
+class DpiModel(BaseModel):
+    username: str = None
+    back_dpi: str = None
+    front_dpi: str = None

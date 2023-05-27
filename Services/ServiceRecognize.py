@@ -1,10 +1,13 @@
 import os
 import time
 
+from matplotlib import pyplot as plt
+
+from models import UserModel, DpiModel
 import cv2
 import imutils as imutils
 import numpy as np
-from typing import List
+from typing import List, Tuple, Final
 from io import BytesIO
 
 
@@ -13,72 +16,151 @@ class ServiceRecognize:
         cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     faces: List[str] = []
     identifiers_faces: List[int] = []
+    mrz_front_dpi: Final = 11
+    mrz_back_dpi: Final = 5
+    labels = []
     recognizer: cv2.face.LBPHFaceRecognizer_create = cv2.face.LBPHFaceRecognizer_create()
 
     # def __init__(self):
     #     face_cascade =
     #     recognizer =
 
-    def get_faces(self, temp_path: str, trainer_model_name: str):
-        labels = []
-        self.identifiers_faces = []
-        video_capture = cv2.VideoCapture(temp_path)
-        for i in range(30):
-            labels.append(0)
-            ret, frame = video_capture.read()
-            frame = imutils.resize(frame, width=1280)
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            aux_frame = frame.copy()
-            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=25,
-                                                       minSize=(30, 30))
-            for (x, y, w, h) in faces:
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                current_face = aux_frame[y:y + h, x:x + w]
-                current_face = cv2.resize(current_face, (150, 150), interpolation=cv2.INTER_CUBIC)
-                current_face = cv2.cvtColor(current_face, cv2.COLOR_BGR2GRAY)
-                self.identifiers_faces.append(current_face)
-        self.recognizer.train(self.identifiers_faces, np.array(labels))
-        name_model = f'{trainer_model_name}.yml'
-        self.recognizer.save(name_model)
-        self.recognizer.clear()
-        return name_model
+    @staticmethod
+    def __identify_all_faces(current_face, faces):
+        faces.append(current_face)
+        from matplotlib import pyplot as plt
+        plt.imshow(current_face)
+        plt.show()
+        return False
 
-    def find_match(self, name_target: str, bytes_image: bytes):
-        success = False
-        local_recognizer: cv2.face.LBPHFaceRecognizer_create = cv2.face.LBPHFaceRecognizer_create()
-        numpy_arr = np.frombuffer(bytes_image, np.uint8)
-        img = cv2.imdecode(numpy_arr, cv2.IMREAD_COLOR)
-        img = imutils.resize(img, width=1280)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        local_recognizer.read(name_target)
-        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        aux_frame = gray.copy()
-        faces = self.face_cascade.detectMultiScale(gray, 1.1, 25)
-        for (x, y, w, h) in faces:
-            select_face = aux_frame[y:y + h, x:x + w]
-            select_face = cv2.resize(select_face, (150, 150), interpolation=cv2.INTER_CUBIC)
-            result = local_recognizer.predict(select_face)
-            success = result[1] < 84
-            if success:
-                break
+    def __save_model(self, model_name: str):
+        self.recognizer.save(model_name)
+        self.recognizer.clear()
+
+    def train_faces(self, temp_path: str, trainer_model_name: str):
+        self.identifiers_faces = []
+        self.labels = []
+        video_capture = cv2.VideoCapture(temp_path)
+        for i in range(40):
+            _, frame = video_capture.read()
+            gray = self.preprocess_image(frame)
+            self.__get_faces(gray, lambda face, array_images: self.__identify_all_faces(face, array_images),
+                             self.identifiers_faces)
+        self.recognizer.train(self.identifiers_faces, np.array(self.labels))
+        self.__save_model(trainer_model_name)
+        return trainer_model_name
+
+    def __dpi_has_two_images(self, img):
+        gray_image = self.preprocess_image(img)
+        self.labels = []
+        self.__get_faces(gray_image)
+        success = len(self.labels) == 2
         return success
 
-    def record_video(self, duration: int):
+    def __validate_front(self, img) -> bool:
+        success: bool = self.__dpi_has_two_images(img)
+        copy_image = img.copy()
+        quantity = self.__get_mrz(copy_image)
+        success = success and quantity == self.mrz_front_dpi
+        return success
+
+    def __validate_back(self, img) -> bool:
+        return self.__get_mrz(img) == self.mrz_back_dpi
+
+    @staticmethod
+    def __get_mrz(image) -> int:
+        rectKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
+        sqKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
+        image = imutils.resize(image, height=600)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+        blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, rectKernel)
+        gradX = cv2.Sobel(blackhat, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=-1)
+        gradX = np.absolute(gradX)
+        (minVal, maxVal) = (np.min(gradX), np.max(gradX))
+        gradX = (255 * ((gradX - minVal) / (maxVal - minVal))).astype("uint8")
+        gradX = cv2.morphologyEx(gradX, cv2.MORPH_CLOSE, rectKernel)
+        thresh = cv2.threshold(gradX, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, sqKernel)
+        thresh = cv2.erode(thresh, None, iterations=4)
+
+        p = int(image.shape[1] * 0.05)
+        thresh[:, 0:p] = 0
+        thresh[:, image.shape[1] - p:] = 0
+        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+                                cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        # plt.imshow(thresh)
+        # plt.show()
+        cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
+        size = len(cnts)
+        for c in cnts:
+            (x, y, w, h) = cv2.boundingRect(c)
+            ar = w / float(h)
+            crWidth = w / float(gray.shape[1])
+            pX = int((x + w) * 0.03)
+            pY = int((y + h) * 0.03)
+            (x, y) = (x - pX, y - pY)
+            (w, h) = (w + (pX * 2), h + (pY * 2))
+            roi = image[y:y + h, x:x + w].copy()
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        return size
+
+    def validate_dpi(self, front_dpi: bytes, back_dpi: bytes) -> bool:
+        front_image = self.__bytes_to_img(front_dpi)
+        success = self.__validate_front(front_image)
+        back_image = self.__bytes_to_img(back_dpi)
+        success = success and self.__validate_back(back_image)
+        return success
+
+    def find_match(self, name_target: str, bytes_image: bytes):
+        success: bool = False
+        local_recognizer: cv2.face.LBPHFaceRecognizer_create = cv2.face.LBPHFaceRecognizer_create()
+        local_recognizer.read(name_target)
+        img = self.__bytes_to_img(bytes_image)
+        gray_image = self.preprocess_image(img)
+        success = self.__get_faces(gray_image,
+                                   lambda image, model: model.predict(image)[1] < 84, local_recognizer)
+        return success
+
+    @staticmethod
+    def __bytes_to_img(bytes_image: bytes):
+        numpy_arr = np.frombuffer(bytes_image, np.uint8)
+        return cv2.imdecode(numpy_arr, cv2.IMREAD_COLOR)
+
+    def record_video(self, max_frames: int):
         images_bytes: List[bytes] = []
         cap = cv2.VideoCapture(0)
-
         output_directory = "output_frames"
         os.makedirs(output_directory, exist_ok=True)
-
         frame_count = 0
-
-        while frame_count < 30:
+        while frame_count < max_frames:
             ret, frame = cap.read()
             _, image_bytes = cv2.imencode(".jpg", frame)
             images_bytes.append(image_bytes.tobytes())
             frame_count += 1
         cap.release()
         self.train(images_bytes, 0, "recognizer")
+
+    @staticmethod
+    def preprocess_image(frame):
+        frame = imutils.resize(frame, width=640)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        return gray
+
+    def __get_faces(self, gray_image, opt_function=lambda x, y: False, local_contex=None) -> bool:
+        # labels = []
+        opt_match: bool = False
+        aux_frame = gray_image.copy()
+        faces = self.face_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=12)
+        for (x, y, w, h) in faces:
+            select_face = aux_frame[y:y + h, x:x + w]
+            select_face = cv2.resize(select_face, (150, 150), interpolation=cv2.INTER_CUBIC)
+            opt_match = opt_function(select_face, local_contex)
+            self.labels.append(0)
+            if opt_match:
+                break
+        return opt_match
 
     def train_image(self, data: bytes, faces: List[str]):
         numpy_arr = np.frombuffer(data, np.uint8)

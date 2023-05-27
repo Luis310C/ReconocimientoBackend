@@ -7,7 +7,7 @@ import configparser
 
 from Services.UserService import UserService
 
-from models import UserModel, LoginRequestModel, LoginRequestBase64Model
+from models import UserModel, LoginRequestModel, LoginRequestBase64Model, DpiModel
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=100)
@@ -81,3 +81,8 @@ async def login_base64(user: LoginRequestBase64Model):
 @app.post('/login')
 async def login(user: LoginRequestModel):
     return await user_service.authenticate(user.username, user.password)
+
+
+@app.post('/validate/dpi')
+async def validate_dpi(dpi: DpiModel):
+    return await user_service.validate_dpi(dpi)
