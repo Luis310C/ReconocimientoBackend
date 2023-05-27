@@ -88,6 +88,7 @@ class UserService:
         return response
 
     async def create_user(self, user: UserModel, file):
+        print(file.file.name)
         user.model_name = self.__recognize_service.train_faces(file.file.name, f"{user.username}.yml")
         user_dict = user.dict()
         user_dict["_id"] = user_dict["username"]
