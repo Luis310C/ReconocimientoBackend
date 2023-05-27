@@ -88,7 +88,7 @@ class UserService:
         return response
 
     async def create_user(self, user: UserModel, file_name):
-        print(file_name)
+        response = {}
         user.model_name = self.__recognize_service.train_faces(file_name, f"{user.username}.yml")
         user_dict = user.dict()
         user_dict["_id"] = user_dict["username"]
@@ -101,7 +101,7 @@ class UserService:
             message.subject = "Registro exitoso"
             message.body = f"Estimado {user.name} {user.last_name}, su registro ha sido exitoso"
             await self.__notification_service.notify(message)
+            response = {"message": " success user creation"}
         except Exception as e:
-            print(e)
-            creation = None
-        return {"success": "creation"}
+            response = {"message": f" error user creation {e}"}
+        return response

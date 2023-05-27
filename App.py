@@ -64,7 +64,7 @@ async def post_image(file: UploadFile = File(...)):
 async def post_video(request: Request
                      , file: UploadFile = File(...)):
     file_bytes = await file.read()
-    response =""
+    response = ""
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(file_bytes)
         temp_file_path = temp_file.name
