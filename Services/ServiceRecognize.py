@@ -28,9 +28,6 @@ class ServiceRecognize:
     @staticmethod
     def __identify_all_faces(current_face, faces):
         faces.append(current_face)
-        from matplotlib import pyplot as plt
-        plt.imshow(current_face)
-        plt.show()
         return False
 
     def __save_model(self, model_name: str):
