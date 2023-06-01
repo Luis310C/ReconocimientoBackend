@@ -38,7 +38,7 @@ class ServiceRecognize:
         self.identifiers_faces = []
         self.labels = []
         video_capture = cv2.VideoCapture(temp_path)
-        for i in range(40):
+        for i in range(400):
             _, frame = video_capture.read()
             if frame is None:
                 break
