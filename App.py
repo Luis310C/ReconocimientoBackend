@@ -93,3 +93,18 @@ async def login(user: LoginRequestModel):
 @app.post('/validate/dpi')
 async def validate_dpi(dpi: DpiModel):
     return await user_service.validate_dpi(dpi)
+
+
+@app.get("/rec/{name_model}")
+async def get_rec(name_model: str):
+    return await user_service.get_rec(name_model)
+
+
+@app.post("/rec/validate")
+async def validate_rec(user: LoginRequestBase64Model):
+    return await user_service.validate_rec(user.image_base64)
+
+
+@app.get("/rec/validate/photo/{name_model}")
+async def validate_rec_photo(name_model: str):
+    return await user_service.validate_rec_photo(name_model)

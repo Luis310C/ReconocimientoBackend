@@ -37,6 +37,16 @@ class UserService:
         await self.__notification_service.stop()
         self.__database_client.close()
 
+    async def get_rec(self, name_model):
+        return self.__recognize_service.train_with_video(name_model)
+
+    async def validate_rec(self,image_base64):
+        bytes_image = base64.b64decode(image_base64)
+        return self.__recognize_service.find_match("prueba.yml",bytes_image)
+
+    async def validate_rec_photo(self,name_model):
+        return self.__recognize_service.find_match_photo(name_model)
+
     async def authenticate(self, username, password):
         response = None
         cursor = await self.__database.users. \

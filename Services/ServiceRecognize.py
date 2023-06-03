@@ -49,6 +49,23 @@ class ServiceRecognize:
         self.__save_model(trainer_model_name)
         return trainer_model_name
 
+    def train_with_video(self, model_name):
+        self.identifiers_faces = []
+        self.labels = []
+        video_capture = cv2.VideoCapture(0)
+
+        for i in range(400):
+            _, frame = video_capture.read()
+            if frame is None:
+                break
+            gray = self.preprocess_image(frame)
+            self.__get_faces(gray, lambda face, array_images: self.__identify_all_faces(face, array_images),
+                             self.identifiers_faces)
+        self.recognizer.train(self.identifiers_faces, np.array(self.labels))
+        self.__save_model(model_name)
+        video_capture.release()
+        return model_name
+
     def __dpi_has_two_images(self, img):
         gray_image = self.preprocess_image(img)
         self.labels = []
@@ -112,14 +129,30 @@ class ServiceRecognize:
         success = success and self.__validate_back(back_image)
         return success
 
-    def find_match(self, name_target: str, bytes_image: bytes):
-        success: bool = False
+    def trace_match(self, image, model):
+        coincidence = model.predict(image)[1]
+        success = coincidence < 60
+        return success
+
+    def search_match(self, name_target: str, img):
         local_recognizer: cv2.face.LBPHFaceRecognizer_create = cv2.face.LBPHFaceRecognizer_create()
         local_recognizer.read(name_target)
-        img = self.__bytes_to_img(bytes_image)
         gray_image = self.preprocess_image(img)
         success = self.__get_faces(gray_image,
-                                   lambda image, model: model.predict(image)[1] < 84, local_recognizer)
+                                   lambda image, model: self.trace_match(image, model), local_recognizer)
+        return success
+
+    def find_match(self, name_target: str, bytes_image: bytes):
+        success: bool = False
+        img = self.__bytes_to_img(bytes_image)
+        success = self.search_match(name_target, img)
+        return success
+
+    def find_match_photo(self, train_model):
+        cap = cv2.VideoCapture(0)
+        _, frame = cap.read()
+        success = self.search_match(train_model, frame)
+        cap.release()
         return success
 
     @staticmethod
@@ -151,7 +184,7 @@ class ServiceRecognize:
         # labels = []
         opt_match: bool = False
         aux_frame = gray_image.copy()
-        faces = self.face_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=12)
+        faces = self.face_cascade.detectMultiScale(gray_image, scaleFactor=1.1, minNeighbors=14)
         for (x, y, w, h) in faces:
             select_face = aux_frame[y:y + h, x:x + w]
             select_face = cv2.resize(select_face, (150, 150), interpolation=cv2.INTER_CUBIC)
@@ -165,7 +198,7 @@ class ServiceRecognize:
         numpy_arr = np.frombuffer(data, np.uint8)
         img = cv2.imdecode(numpy_arr, cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        face_rects = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=12, minSize=(30, 30))
+        face_rects = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=14, minSize=(30, 30))
         for (x, y, w, h) in face_rects:
             face = gray[y:y + h, x:x + w]
             faces.append(face)
